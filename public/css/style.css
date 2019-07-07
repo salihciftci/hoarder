@@ -1,0 +1,16 @@
+body {
+  background: #c0bebe;
+}
+
+canvas {
+  background-image: url("../img/bg.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  margin: 50px auto;
+}
+
+canvas:focus {
+  outline: none;
+}
