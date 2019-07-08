@@ -62,8 +62,8 @@ class Game {
         this.canvas.focus()
         this.ctx = this.canvas.getContext("2d")
 
-        this.player = new Player(200, 350)
-        this.gold = new Gold(600, 365)
+        this.player = new Player(200, 360)
+        this.gold = new Gold(600, 360)
     }
 
     init() {
@@ -91,18 +91,18 @@ class Game {
     }
 
     update() {
-        if (this.player.x + 15 === this.gold.x && this.player.y + 15 === this.gold.y) {
+        if (this.player.x + 32 === this.gold.x + 12 && this.player.y + 32 === this.gold.y + 12) {
             this.player.gold++
 
             while (true) {
                 this.gold.x = Math.floor(Math.random() * 800)
-                if (this.gold.x % 5 === 0) {
+                if (this.gold.x % 20 === 0) {
                     break;
                 }
             }
             while (true) {
                 this.gold.y = Math.floor(Math.random() * 800)
-                if (this.gold.y % 5 === 0) {
+                if (this.gold.y % 20 === 0) {
                     break;
                 }
             }
@@ -115,22 +115,22 @@ class Game {
         switch (e.keyCode) {
             case 87:
                 if (this.player.y - 5 > -10) {
-                    this.player.y -= 5
+                    this.player.y -= 20
                 }
                 break;
             case 83:
                 if (this.player.y + 5 < 750) {
-                    this.player.y += 5
+                    this.player.y += 20
                 }
                 break;
             case 65:
                 if (this.player.x - 5 > -20) {
-                    this.player.x -= 5
+                    this.player.x -= 20
                 }
                 break;
             case 68:
                 if (this.player.x + 5 < 750) {
-                    this.player.x += 5
+                    this.player.x += 20
                 }
                 break;
             default: break;
