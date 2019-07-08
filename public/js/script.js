@@ -62,30 +62,74 @@ class Game {
         this.canvas.focus()
         this.ctx = this.canvas.getContext("2d")
 
-        this.player = new Player(200, 360)
         this.gold = new Gold(600, 360)
+
+        this.socket = io("http://46.196.104.46:5002")
     }
 
     init() {
+        while (true) {
+            var x = Math.floor(Math.random() * 600)
+            if (x % 20 === 0) {
+                break;
+            }
+        }
+
+        while (true) {
+            var y = Math.floor(Math.random() * 600)
+            if (y % 20 === 0) {
+                break;
+            }
+        }
+
+
+        this.player = new Player(x, y)
+
         this.player.image.onload = () => {
             this.ctx.drawImage(this.player.image, this.player.x, this.player.y, 64, 64)
         }
+
 
         this.gold.image.onload = () => {
             this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24)
         }
 
+        this.socket.emit("init", { "id": this.socket.id, "data": this.player })
+
+        this.socket.on("init", (server) => {
+            if (server.game) {
+                this.player2 = new Player(server.player2.x, server.player2.y)
+                this.player.image.onload = () => {
+                    this.ctx.drawImage(this.player2.image, this.player2.x, this.player2.y, 64, 64)
+                }
+                game.start()
+
+            }
+        })
+
+        this.socket.on("update", (players) => {
+            this.player2.x = players.player2.x
+            this.player2.y = players.player2.y
+        })
+
+
+    }
+
+
+    start() {
         this.canvas.addEventListener("keydown", this.move.bind(this), false)
         this.canvas.addEventListener("keyup", () => { this.player.stop() }, false)
 
-        setInterval(this.update.bind(this), 100)
+        this.timer = setInterval(this.update.bind(this), 100)
     }
 
     draw() {
+        this.socket.emit("update", { "id": this.socket.id, "data": this.player })
         this.gold.loop()
         this.ctx.clearRect(0, 0, 800, 800)
         this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24)
         this.ctx.drawImage(this.player.image, this.player.x, this.player.y, 64, 64)
+        this.ctx.drawImage(this.player2.image, this.player2.x, this.player2.y, 64, 64)
         this.ctx.font = "20px Arial"
         this.ctx.fillText("Score: " + this.player.gold.toString(), 5, 795)
     }
