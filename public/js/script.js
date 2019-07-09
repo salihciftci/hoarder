@@ -16,6 +16,10 @@ class Player {
     stop() {
         this.image.src = "../img/stop.png"
     }
+
+    draw(ctx) {
+        ctx.drawImage(this.image, this.x, this.y, 64, 64)
+    }
 }
 
 class Gold {
@@ -44,6 +48,7 @@ class Gold {
             "../img/coin/15.png",
             "../img/coin/16.png",
         ]
+
         this.count = 0
     }
 
@@ -54,6 +59,10 @@ class Gold {
         }
         this.image.src = this.src[this.count]
     }
+
+    draw(ctx) {
+        ctx.drawImage(this.image, this.x, this.y, 24, 24)
+    }
 }
 
 class Game {
@@ -61,49 +70,51 @@ class Game {
         this.canvas = document.getElementById("canvas")
         this.canvas.focus()
         this.ctx = this.canvas.getContext("2d")
+        this.timer = null
 
-        this.gold = new Gold(600, 360)
-
-        this.socket = io("http://46.196.104.46:5002")
+        this.socket = io("localhost:3000")
     }
 
     init() {
+
+        // Giving random position to player
         while (true) {
-            var x = Math.floor(Math.random() * 600)
+            var x = Math.floor(Math.random() * 800)
             if (x % 20 === 0) {
                 break;
             }
         }
 
         while (true) {
-            var y = Math.floor(Math.random() * 600)
+            var y = Math.floor(Math.random() * 800)
             if (y % 20 === 0) {
                 break;
             }
         }
 
+        this.ctx.font = "20px Arial"
+        this.ctx.fillText("Diğer Oyuncu Bekleniyor..", 270, 400)
 
         this.player = new Player(x, y)
 
-        this.player.image.onload = () => {
-            this.ctx.drawImage(this.player.image, this.player.x, this.player.y, 64, 64)
-        }
-
-
-        this.gold.image.onload = () => {
-            this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24)
-        }
-
+        // Telling socket to I'm Ready
         this.socket.emit("init", { "id": this.socket.id, "data": this.player })
 
         this.socket.on("init", (server) => {
             if (server.game) {
+                this.player.draw(this.ctx)
                 this.player2 = new Player(server.player2.x, server.player2.y)
-                this.player.image.onload = () => {
-                    this.ctx.drawImage(this.player2.image, this.player2.x, this.player2.y, 64, 64)
-                }
+                this.gold = new Gold(600, 360)
+                this.gold.draw(this.ctx)
+                this.ctx.drawImage(this.player2.image, this.player2.x, this.player2.y, 64, 64)
+                console.log(this.player, this.player2);
                 game.start()
-
+            } else {
+                // clearInterval(this.timer)
+                clearTimeout(this.timer)
+                this.ctx.clearRect(0, 0, 800, 800)
+                this.ctx.font = "20px Arial"
+                this.ctx.fillText("Diğer Oyuncu Bekleniyor..", 270, 400)
             }
         })
 
@@ -111,10 +122,7 @@ class Game {
             this.player2.x = players.player2.x
             this.player2.y = players.player2.y
         })
-
-
     }
-
 
     start() {
         this.canvas.addEventListener("keydown", this.move.bind(this), false)
@@ -126,10 +134,13 @@ class Game {
     draw() {
         this.socket.emit("update", { "id": this.socket.id, "data": this.player })
         this.gold.loop()
+
         this.ctx.clearRect(0, 0, 800, 800)
         this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24)
-        this.ctx.drawImage(this.player.image, this.player.x, this.player.y, 64, 64)
-        this.ctx.drawImage(this.player2.image, this.player2.x, this.player2.y, 64, 64)
+
+        this.player.draw(this.ctx)
+        this.player2.draw(this.ctx)
+
         this.ctx.font = "20px Arial"
         this.ctx.fillText("Score: " + this.player.gold.toString(), 5, 795)
     }
@@ -155,31 +166,31 @@ class Game {
     }
 
     move(e) {
-        this.player.move()
         switch (e.keyCode) {
-            case 87:
+            case 87: // W
                 if (this.player.y - 5 > -10) {
                     this.player.y -= 20
                 }
                 break;
-            case 83:
+            case 83: // S
                 if (this.player.y + 5 < 750) {
                     this.player.y += 20
                 }
                 break;
-            case 65:
+            case 65: // A
                 if (this.player.x - 5 > -20) {
                     this.player.x -= 20
                 }
                 break;
-            case 68:
+            case 68: // D
                 if (this.player.x + 5 < 750) {
                     this.player.x += 20
                 }
                 break;
             default: break;
         }
-        this.gold.count--
+
+        this.player.move()
         this.draw()
     }
 }
