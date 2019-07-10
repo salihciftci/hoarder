@@ -1,80 +1,87 @@
-var http = require("http")
-var io = require("socket.io")(http)
+const http = require("http");
+const io = require("socket.io")(http);
 
-var game = false
-playerCount = 0
-
-player1 = {
-    id: null,
-    x: 0,
-    y: 0,
-    score: 0,
-}
-
-player2 = {
-    id: null,
-    x: 0,
-    y: 0,
-    score: 0,
-}
-
-io.on("connection", (socket) => {
-    console.log("New Player connected");
-    playerCount++
-    if (playerCount === 2) {
-        game = true
-        io.emit("init", { player1, player2, "game": game })
-    } else {
-        game = false
-        io.emit("init", { player1, player2, "game": game })
+class Player {
+    constructor(ID, x, y) {
+        this.id = ID;
+        this.x = x;
+        this.y = y;
+        this.score = 0;
     }
 
+    update(x, y, score) {
+        this.x = x;
+        this.y = y;
+        this.score = score;
+    }
+}
 
-    socket.on("disconnect", () => {
-        console.log("Player disconnected")
-        playerCount--
-        player1.id = null
-        player2.id = null
+// Todo: Implement later
+// class Gold {
+//     constructor(x, y) {
+//         this.x = x;
+//         this.y = y;
+//     }
+// }
 
-        if (playerCount === 2) {
-            game = true
-            io.emit("init", { player1, player2, "game": game })
-        } else {
-            game = false
-            io.emit("init", { player1, player2, "game": game })
-        }
-    })
 
-    socket.on("init", (client) => {
-        if (playerCount === 0) {
-            player1.id = socket.id
-            player1.x = client.data.x
-            player1.y = client.data.y
-            player1.score = client.data.gold
-        } else if (playerCount === 1) {
-            player2.id = socket.id
-            player2.x = client.data.x
-            player2.y = client.data.y
-            player2.score = client.data.gold
-        } else {
-            console.log("DOLU");
-        }
-    })
+class Game {
+    constructor() {
+        this.run = false;
+        this.players = []
+    }
 
-    socket.on("update", (client) => {
-        if (player1.id === null) {
-            player1.id = socket.id
-            player1.x = client.data.x
-            player1.y = client.data.y
-            player1.score = client.data.gold
-        } else {
-            player2.id = socket.id
-            player2.x = client.data.x
-            player2.y = client.data.y
-            player2.score = client.data.gold
-        }
-        io.emit("update", { player1, player2, "game": game })
-    })
-})
+    runGame() {
+        this.run = this.players.length >= 2;
+    }
 
-io.listen(3000, () => { console.log("Live:3000") })
+    init() {
+        io.on("connection", (socket) => {
+            console.log(`Player ${socket.id} connected`);
+
+            socket.on("disconnect", () => {
+                this.players.forEach((e, i) => {
+                    if (e.id === socket.id) {
+                        this.players.splice(i, 1)
+                    }
+                    console.log(`Player ${socket.id} disconnected`);
+                    this.runGame();
+                    if (!this.run) {
+                        console.log("Game is not running")
+                    }
+                    io.emit("init", {"players": this.players, "game": this.run})
+                })
+            });
+
+            socket.on("init", (player) => {
+                this.players.push(new Player(socket.id, player.data.x, player.data.y));
+                console.log(this.players);
+
+                this.runGame();
+                if (this.run) {
+                    console.log("Game is running");
+                    io.emit("init", {"players": this.players, "game": this.run})
+                }
+            });
+
+            socket.on("update", (player) => {
+                this.players.forEach((e) => {
+                    if (e.id === socket.id) {
+                        e.update(player.data.x, player.data.y, player.data.gold) //TODO: change gold to score
+                    }
+                });
+
+                io.emit("update", {"players": this.players, "game": this.run})
+            });
+
+        });
+    }
+}
+
+
+const game = new Game();
+game.init();
+
+io.listen(3000, () => {
+    console.log("Live:3000")
+});
