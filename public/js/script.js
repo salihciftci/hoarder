@@ -1,9 +1,10 @@
 class Player {
-    constructor(x, y) {
+    constructor(id, x, y) {
+        this.id = id;
         this.x = x;
         this.y = y;
 
-        this.gold = 0;
+        this.score = 0;
 
         this.image = new Image();
         this.image.src = "../img/stop.png"
@@ -70,104 +71,104 @@ class Game {
         this.canvas = document.getElementById("canvas");
         this.canvas.focus();
         this.ctx = this.canvas.getContext("2d");
-        this.timer = null;
 
         this.socket = io("localhost:3000")
     }
 
     init() {
-
-        // Giving random position to player
-        while (true) {
-            var x = Math.floor(Math.random() * 800);
-            if (x % 20 === 0) {
-                break;
-            }
-        }
-
-        while (true) {
-            var y = Math.floor(Math.random() * 800);
-            if (y % 20 === 0) {
-                break;
-            }
-        }
-
+        this.run = false;
         this.ctx.font = "20px Arial";
-        this.ctx.fillText("Diğer Oyuncu Bekleniyor..", 270, 400);
+        this.ctx.fillText(`Connected to room ${this.room}`, 290, 400);
+        this.ctx.fillText(`Waiting other player to connect`, 270, 425);
 
-        this.player = new Player(x, y);
+        let x = Math.floor(Math.random() * 700);
+        let y = Math.floor(Math.random() * 700);
 
-        // Telling socket to I'm Ready
-        this.socket.emit("init", {"id": this.socket.id, "data": this.player});
+        this.player = new Player(this.socket.id, x, y);
 
-        this.socket.on("init", (server) => {
-            if (server.game) {
-                this.player.draw(this.ctx);
-                this.player2 = new Player(server.players[1].x, server.players[1].y);
-                this.gold = new Gold(600, 360);
-                this.gold.draw(this.ctx);
-                this.ctx.drawImage(this.player2.image, this.player2.x, this.player2.y, 64, 64);
-                game.start()
-            } else {
-                clearInterval(this.timer);
-                // clearTimeout(this.timer)
-                this.ctx.clearRect(0, 0, 800, 800);
-                this.ctx.font = "20px Arial";
-                this.ctx.fillText("Diğer Oyuncu Bekleniyor..", 270, 400)
-            }
-        });
+        this.socket.emit("game", {"process": "init", "room": this.room, "player": this.player});
 
-        this.socket.on("update", (players) => {
-            this.player2.x = players.players[1].x;
-            this.player2.y = players.players[1].y;
-            console.log(players)
-        });
-    }
-
-    start() {
         this.canvas.addEventListener("keydown", this.move.bind(this), false);
         this.canvas.addEventListener("keyup", () => {
             this.player.stop()
         }, false);
 
-        this.timer = setInterval(this.update.bind(this), 100)
+        this.socket.on("game", (game) => {
+            if (game.process === "gameStart") {
+                if (game.room === this.room) {
+                    this.start(game);
+                }
+            } else if (game.process === "gameUpdate") {
+                if (game.roomStatus === "full") {
+                    alert("Room is full.");
+                    location.reload();
+                    return
+                }
+                if (game.room === this.room) {
+                    this.update(game);
+                }
+            } else if (game.process === "gameStop") {
+                // clearInterval(this.timer);
+            }
+        });
     }
 
-    draw() {
-        this.socket.emit("update", {"id": this.socket.id, "data": this.player});
-        this.gold.loop();
-
+    start(game) {
+        this.run = true;
         this.ctx.clearRect(0, 0, 800, 800);
-        this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24);
+
+        this.player.draw(this.ctx);
+
+        game.players.forEach((p) => {
+            if (p.id !== this.player.id) {
+                this.player2 = new Player(p.id, p.x, p.y);
+            }
+        });
+
+        this.gold = new Gold(game.gold.x, game.gold.y);
+        this.gold.draw(this.ctx);
+
+        this.player2.draw(this.ctx);
+    }
+
+    // draw() {
+    //     this.socket.emit("update", {"id": this.socket.id, "data": this.player});
+    //     this.gold.loop();
+    //
+    //     this.ctx.clearRect(0, 0, 800, 800);
+    //     this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24);
+    //
+    //     this.player.draw(this.ctx);
+    //     this.player2.draw(this.ctx);
+    //
+    //     this.ctx.font = "20px Arial";
+    //     this.ctx.fillText("Score: " + this.player.score.toString(), 5, 795)
+    // }
+
+    update(game) {
+        this.ctx.clearRect(0, 0, 800, 800);
+
+        game.players.forEach((p) => {
+            if (p.id === this.player2.id) {
+                this.player2.x = p.x;
+                this.player2.y = p.y;
+                this.player2.score = p.score;
+            }
+            this.gold.x = game.gold.x;
+            this.gold.y = game.gold.y;
+        });
 
         this.player.draw(this.ctx);
         this.player2.draw(this.ctx);
-
-        this.ctx.font = "20px Arial";
-        this.ctx.fillText("Score: " + this.player.gold.toString(), 5, 795)
-    }
-
-    update() {
-        if (this.player.x + 32 === this.gold.x + 12 && this.player.y + 32 === this.gold.y + 12) {
-            this.player.gold++;
-
-            while (true) {
-                this.gold.x = Math.floor(Math.random() * 800);
-                if (this.gold.x % 20 === 0) {
-                    break;
-                }
-            }
-            while (true) {
-                this.gold.y = Math.floor(Math.random() * 800);
-                if (this.gold.y % 20 === 0) {
-                    break;
-                }
-            }
-        }
-        this.draw();
+        this.gold.draw(this.ctx);
     }
 
     move(e) {
+        console.log("x");
+        if (!this.run) {
+            return
+        }
+
         switch (e.keyCode) {
             case 87: // W
                 if (this.player.y - 5 > -10) {
@@ -194,10 +195,22 @@ class Game {
         }
 
         this.player.move();
-        this.draw()
+        this.socket.emit("game", {"process": "gameUpdate", "player": this.player});
+    }
+
+    setRoom() {
+        let value = document.getElementById("room").value;
+        if (value !== undefined && value !== "") {
+            this.room = document.getElementById("room").value;
+
+            document.getElementById("room").style.visibility = "hidden";
+            document.getElementById("enter").style.visibility = "hidden";
+
+            this.init();
+        } else {
+            alert("Enter room name");
+        }
     }
 }
 
-
-const game = new Game();
-game.init();
+let game = new Game();
