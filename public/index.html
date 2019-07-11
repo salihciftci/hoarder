@@ -12,7 +12,12 @@
 </head>
 
 <body>
-    <canvas id="canvas" width="800" height="800" tabindex="0" autofocus></canvas>
+<div class="room">
+    <label for="room">Room:</label>
+    <input id="room" type="text" placeholder="Room"/>
+    <button id="enter" name="room" onclick="game.setRoom()">Enter</button>
+</div>
+<canvas id="canvas" width="800" height="800" tabindex="0"></canvas>
     <script src="js/script.js"></script>
 </body>
 
