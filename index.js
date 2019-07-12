@@ -17,12 +17,6 @@ class Player {
         this.y = y;
         this.score = 0;
     }
-
-    update(x, y, score) {
-        this.x = x;
-        this.y = y;
-        this.score = score;
-    }
 }
 
 class Gold {
@@ -30,8 +24,8 @@ class Gold {
         this.x = x;
         this.y = y;
     }
-}
 
+}
 
 class Game {
     init() {
@@ -44,7 +38,6 @@ class Game {
             socket.on("game", (client) => {
                 if (client.process === "init") {
                     this.processInit(client);
-                    this.checkRooms();
                 } else if (client.process === "gameUpdate") {
                     this.processUpdate(client);
                 }
@@ -53,7 +46,6 @@ class Game {
     }
 
     disconnect(socket) {
-        console.log(this.rooms);
         this.rooms.forEach((room) => {
             room.players.forEach((player, i) => {
                 if (player.id === socket.id) {
@@ -87,13 +79,12 @@ class Game {
             room.players.push(player);
             this.rooms.push(room)
         }
-    }
 
-    checkRooms() {
         this.rooms.forEach((room) => {
             if (room.players.length === 2) {
                 room.game = true;
-                let gold = new Gold(Math.floor(Math.random() * 800), Math.floor(Math.random() * 800));
+
+                let gold = new Gold(this.generatePoint(), this.generatePoint());
                 room.gold = gold;
                 io.emit("game", {
                     "process": "gameStart",
@@ -109,9 +100,27 @@ class Game {
         this.rooms.forEach((room) => {
             room.players.forEach((player) => {
                 if (player.id === client.player.id) {
+                    let score = client.player.score;
                     player.x = client.player.x;
                     player.y = client.player.y;
-                    player.score = client.player.score;
+
+                    if (player.x === room.gold.x && player.y === room.gold.y) {
+                        score++;
+
+                        if (score >= 10) {
+                            io.emit("game", {
+                                "process": "gameEnd",
+                                "winner": player.id
+                            });
+                            return;
+                        }
+
+                        room.gold.x = this.generatePoint();
+                        room.gold.y = this.generatePoint();
+                    }
+
+
+                    player.score = score;
 
                     io.emit("game", {
                         "process": "gameUpdate",
@@ -122,6 +131,16 @@ class Game {
                 }
             })
         })
+    }
+
+    generatePoint() {
+        let x;
+        while (true) {
+            x = Math.floor(Math.random() * 700);
+            if (x % 20 === 0)
+                break;
+        }
+        return x
     }
 }
 

@@ -28,37 +28,8 @@ class Gold {
         this.x = x;
         this.y = y;
 
-
         this.image = new Image();
         this.image.src = "../img/coin/1.png";
-        this.src = [
-            "../img/coin/1.png",
-            "../img/coin/2.png",
-            "../img/coin/3.png",
-            "../img/coin/4.png",
-            "../img/coin/5.png",
-            "../img/coin/6.png",
-            "../img/coin/7.png",
-            "../img/coin/8.png",
-            "../img/coin/9.png",
-            "../img/coin/10.png",
-            "../img/coin/11.png",
-            "../img/coin/12.png",
-            "../img/coin/13.png",
-            "../img/coin/14.png",
-            "../img/coin/15.png",
-            "../img/coin/16.png",
-        ];
-
-        this.count = 0
-    }
-
-    loop() {
-        this.count++;
-        if (this.count === 15) {
-            this.count = 0
-        }
-        this.image.src = this.src[this.count]
     }
 
     draw(ctx) {
@@ -73,6 +44,12 @@ class Game {
         this.ctx = this.canvas.getContext("2d");
 
         this.socket = io("localhost:3000")
+
+        this.socket.on("disconnect", () => {
+            alert("Disconnected from server.");
+            window.location.reload();
+        })
+
     }
 
     init() {
@@ -81,8 +58,21 @@ class Game {
         this.ctx.fillText(`Connected to room ${this.room}`, 290, 400);
         this.ctx.fillText(`Waiting other player to connect`, 270, 425);
 
-        let x = Math.floor(Math.random() * 700);
-        let y = Math.floor(Math.random() * 700);
+        let x, y;
+
+        while (true) {
+            x = Math.floor(Math.random() * 700);
+            if (x % 20 === 0) {
+                break;
+            }
+        }
+
+        while (true) {
+            y = Math.floor(Math.random() * 700);
+            if (y % 20 === 0) {
+                break;
+            }
+        }
 
         this.player = new Player(this.socket.id, x, y);
 
@@ -101,14 +91,19 @@ class Game {
             } else if (game.process === "gameUpdate") {
                 if (game.roomStatus === "full") {
                     alert("Room is full.");
-                    location.reload();
+                    window.location.reload();
                     return
                 }
                 if (game.room === this.room) {
                     this.update(game);
                 }
-            } else if (game.process === "gameStop") {
-                // clearInterval(this.timer);
+            } else if (game.process === "gameEnd") {
+                if (game.winner === this.socket.id) {
+                    alert("Win!");
+                } else {
+                    alert("Lose");
+                }
+                window.location.reload();
             }
         });
     }
@@ -131,20 +126,6 @@ class Game {
         this.player2.draw(this.ctx);
     }
 
-    // draw() {
-    //     this.socket.emit("update", {"id": this.socket.id, "data": this.player});
-    //     this.gold.loop();
-    //
-    //     this.ctx.clearRect(0, 0, 800, 800);
-    //     this.ctx.drawImage(this.gold.image, this.gold.x, this.gold.y, 24, 24);
-    //
-    //     this.player.draw(this.ctx);
-    //     this.player2.draw(this.ctx);
-    //
-    //     this.ctx.font = "20px Arial";
-    //     this.ctx.fillText("Score: " + this.player.score.toString(), 5, 795)
-    // }
-
     update(game) {
         this.ctx.clearRect(0, 0, 800, 800);
 
@@ -153,6 +134,8 @@ class Game {
                 this.player2.x = p.x;
                 this.player2.y = p.y;
                 this.player2.score = p.score;
+            } else {
+                this.player.score = p.score;
             }
             this.gold.x = game.gold.x;
             this.gold.y = game.gold.y;
@@ -161,15 +144,19 @@ class Game {
         this.player.draw(this.ctx);
         this.player2.draw(this.ctx);
         this.gold.draw(this.ctx);
+
+
+        this.ctx.font = "20px Arial";
+        this.ctx.fillText("Your Score: " + this.player.score.toString(), 5, 795);
+        this.ctx.fillText("Enemy Score: " + this.player2.score.toString(), 645, 795);
     }
 
     move(e) {
-        console.log("x");
         if (!this.run) {
             return
         }
 
-        switch (e.keyCode) {
+        switch (e.which) {
             case 87: // W
                 if (this.player.y - 5 > -10) {
                     this.player.y -= 20
@@ -205,6 +192,7 @@ class Game {
 
             document.getElementById("room").style.visibility = "hidden";
             document.getElementById("enter").style.visibility = "hidden";
+            document.getElementById("roomLabel").style.visibility = "hidden";
 
             this.init();
         } else {
